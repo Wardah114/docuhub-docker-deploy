@@ -1,0 +1,41 @@
+name: Deploy Dockerized Node App to EC2
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    env:
+      MYSQL_USER: ${{ secrets.DOCUHUB_DB_USER }}
+      MYSQL_PASSWORD: ${{ secrets.DOCUHUB_DB_PASS }}
+      MYSQL_DB: docuHub_k8s_documents_service
+      MYSQL_HOSTNAME: ${{ secrets.DOCUHUB_DB_HOST }}
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set dynamic DATABASE_URL
+      run: |
+        echo "DATABASE_URL=mysql://$MYSQL_USER:$MYSQL_PASSWORD@$MYSQL_HOSTNAME/$MYSQL_DB" >> $GITHUB_ENV
+
+    - name: Create .env for container
+      run: |
+        echo "DATABASE_URL=${{ env.DATABASE_URL }}" > .env
+
+    - name: Build Docker image
+      run: docker build -t docuhub-app .
+
+    - name: Stop and remove old container (if running)
+      run: docker rm -f docuhub || true
+
+    - name: Run Docker container
+      run: |
+        docker run -d \
+          --name docuhub \
+          -p 3000:3000 \
+          --env-file .env \
+          docuhub-app
