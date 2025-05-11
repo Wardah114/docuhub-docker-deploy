@@ -29,7 +29,16 @@ jobs:
     - name: Build Docker image
       run: docker build -t docuhub-app .
 
-    - name: Stop and remove old container (if running)
+    - name: Stop container using port 3000 (if any)
+      run: |
+        CONTAINER_ID=$(docker ps -q --filter "publish=3000")
+        if [ -n "$CONTAINER_ID" ]; then
+          echo "Stopping container using port 3000..."
+          docker stop $CONTAINER_ID
+          docker rm $CONTAINER_ID
+        fi
+
+    - name: Remove old container (if named docuhub)
       run: docker rm -f docuhub || true
 
     - name: Run Docker container
